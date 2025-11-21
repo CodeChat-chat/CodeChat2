@@ -33,8 +33,12 @@
             border-top: 10px solid #ffffff; border-left: 10px solid transparent;
         }
 
-        /* Remove the problematic h-screen-mobile CSS/JS hack and rely on flex/full height */
-        /* The body still uses h-screen and overflow-hidden */
+        /* CSS Fix: Ensure the chat screen is positioned absolutely at the top left */
+        #chat-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
     </style>
 </head>
 <body class="bg-gray-100 h-screen w-screen overflow-hidden flex items-center justify-center font-sans">
@@ -65,8 +69,8 @@
         </div>
     </div>
 
-    <!-- CHAT SCREEN -->
-    <div id="chat-screen" class="w-full h-full h-screen md:h-[90vh] md:w-[90vw] md:max-w-4xl bg-white shadow-2xl relative flex flex-col hidden md:rounded-lg overflow-hidden">
+    <!-- CHAT SCREEN - Height is now managed by JavaScript on mobile, using Visual Viewport -->
+    <div id="chat-screen" class="w-full h-full md:h-[90vh] md:w-[90vw] md:max-w-4xl bg-white shadow-2xl relative flex flex-col hidden md:rounded-lg overflow-hidden">
         <!-- Header -->
         <div class="bg-[#008069] px-4 py-3 flex justify-between items-center text-white shadow-md z-10">
             <div class="flex items-center gap-3">
@@ -192,6 +196,30 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight; 
         }
 
+        // --- NEW: Manual Height Calculation for Mobile Fix (using Visual Viewport) ---
+        const setChatScreenHeight = () => {
+            if (chatScreen.classList.contains('hidden')) return; 
+
+            // Check if visualViewport is available (it is in modern browsers, especially Chrome)
+            if (window.visualViewport) {
+                // Use the visual viewport height directly for the chat container
+                const height = window.visualViewport.height;
+                chatScreen.style.height = `${height}px`;
+            } else {
+                // Fallback for older browsers (less reliable for keyboard fix)
+                chatScreen.style.height = `${window.innerHeight}px`;
+            }
+            
+            // Always scroll to bottom after resizing (important for keyboard closing/opening)
+            scrollToBottom();
+        };
+
+        // --- Event Listeners for Height Control ---
+        // Listen to standard resize for initial load/rotation
+        window.addEventListener('resize', setChatScreenHeight);
+        // Listen to visualViewport resize for fast keyboard open/close detection
+        window.visualViewport?.addEventListener('resize', setChatScreenHeight);
+
         // --- Authentication ---
         const initAuth = async () => {
             try {
@@ -238,6 +266,9 @@
             loginScreen.classList.add('hidden');
             chatScreen.classList.remove('hidden');
             
+            // Call the height setter immediately when switching to chat screen
+            setChatScreenHeight();
+
             displayCode.textContent = `Code: ${code}`;
             headerTitle.textContent = `Chat Room (${code})`;
             loadMessages();
@@ -272,28 +303,8 @@
 
         sendBtn.addEventListener('click', sendMessage);
         
-        // --- MOBILE KEYBOARD FIX: Visual Viewport Listener ---
-        // This is the most reliable way to force the input into view when the mobile keyboard opens.
-        window.visualViewport?.addEventListener('resize', () => {
-            if (chatScreen.classList.contains('hidden')) return; 
-
-            // Calculate the bottom position of the input area relative to the visual viewport
-            const inputRect = inputArea.getBoundingClientRect();
-            const viewportBottom = window.visualViewport.height;
-
-            // If the input's bottom edge is below the viewport's bottom edge, scroll to it.
-            // A buffer of 1px is added for accuracy.
-            if (inputRect.bottom > viewportBottom + 1) {
-                // Scroll the input area to the bottom of the visual viewport
-                inputArea.scrollIntoView({ behavior: 'smooth', block: 'end' });
-            }
-            
-            // Always ensure messages are scrolled to the latest message whenever the viewport changes (keyboard opens/closes)
-            scrollToBottom();
-        });
-
+        // Ensure scroll to bottom on focus. Height adjustment is now handled by the resize listeners.
         messageInput.addEventListener('focus', () => {
-            // Initial scroll to bottom when focus occurs
             scrollToBottom();
         });
 
