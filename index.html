@@ -202,7 +202,10 @@
             return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
 
-        const scrollToBottom = () => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }
+        const scrollToBottom = () => { 
+            // Ensures smooth scroll when the input is focused
+            messagesContainer.scrollTop = messagesContainer.scrollHeight; 
+        }
 
         // --- Authentication ---
         const initAuth = async () => {
@@ -283,6 +286,10 @@
         };
 
         sendBtn.addEventListener('click', sendMessage);
+        
+        // --- MOBILE FIX: Scroll to bottom when input is focused to position it correctly ---
+        messageInput.addEventListener('focus', scrollToBottom);
+
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
